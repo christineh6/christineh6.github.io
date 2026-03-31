@@ -61,3 +61,13 @@ audio{
     width:100%;
     margin-top:25px;
 }
+canvas{
+
+margin-top:20px;
+
+background:#000;
+
+border-radius:10px;
+
+}
+
