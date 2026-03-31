@@ -3,70 +3,90 @@ const canvas = document.getElementById("visualizer");
 const ctx = canvas.getContext("2d");
 
 let audioCtx;
-let source;
 let analyser;
-let dataArray;
+let source;
 
-const BARS = 48;
+let freqData;
+let timeData;
 
-let smooth = new Array(BARS).fill(0);
+const BARS = 40;
 
-let volumeHistory = [];
-let pulse = 0;
+let envelope = 0;
+let smoothed = new Array(BARS).fill(0);
+
+let energyHistory = [];
+
+let kickEnergy = 0;
 
 function setup(){
 
 audioCtx = new AudioContext();
 
-source = audioCtx.createMediaElementSource(audio);
+source =
+audioCtx.createMediaElementSource(audio);
 
-analyser = audioCtx.createAnalyser();
+analyser =
+audioCtx.createAnalyser();
 
-analyser.fftSize = 1024;
+analyser.fftSize = 2048;
 
 source.connect(analyser);
 
 analyser.connect(audioCtx.destination);
 
-dataArray = new Uint8Array(analyser.frequencyBinCount);
+freqData =
+new Uint8Array(analyser.frequencyBinCount);
+
+timeData =
+new Uint8Array(analyser.fftSize);
 
 }
 
-function getVolume(){
+/* isolate kick energy */
+function getKickEnergy(){
 
-let sum = 0;
+analyser.getByteFrequencyData(freqData);
 
-for(let i=0;i<dataArray.length;i++){
+let sum=0;
 
-sum += dataArray[i];
+/* kick zone */
+for(let i=2;i<18;i++){
 
-}
-
-let avg = sum/dataArray.length;
-
-volumeHistory.push(avg);
-
-if(volumeHistory.length>40){
-
-volumeHistory.shift();
+sum+=freqData[i];
 
 }
 
-let historyAvg =
-volumeHistory.reduce((a,b)=>a+b,0)
-/volumeHistory.length;
+let energy=sum/16;
 
-if(avg > historyAvg*1.3){
+/* remove constant bass */
+energy=Math.max(0,energy-45);
 
-pulse = 1;
+/* compression */
+energy=Math.pow(energy/255,1.7)*255;
 
-}else{
+energyHistory.push(energy);
 
-pulse *= .88;
+if(energyHistory.length>40){
+
+energyHistory.shift();
 
 }
 
-return avg;
+let avg=
+energyHistory.reduce((a,b)=>a+b,0)
+/energyHistory.length;
+
+/* transient detection */
+if(energy>avg*1.6 && energy>50){
+
+kickEnergy=1;
+
+}
+
+/* decay */
+kickEnergy*=0.87;
+
+return energy;
 
 }
 
@@ -74,52 +94,70 @@ function draw(){
 
 requestAnimationFrame(draw);
 
-analyser.getByteFrequencyData(dataArray);
+let energy=getKickEnergy();
 
-let volume = getVolume();
+/* envelope follower */
+if(energy>envelope){
+
+envelope+=
+(energy-envelope)*0.6;
+
+}else{
+
+envelope+=
+(energy-envelope)*0.12;
+
+}
 
 ctx.fillStyle="#050510";
 
-ctx.fillRect(0,0,canvas.width,canvas.height);
+ctx.fillRect(
+0,
+0,
+canvas.width,
+canvas.height
+);
 
-let barWidth = canvas.width/BARS;
+let barWidth=
+canvas.width/BARS;
+
+/* impact multiplier */
+let impact=
+1+kickEnergy*2.5;
 
 for(let i=0;i<BARS;i++){
 
-let index = Math.floor(i*dataArray.length/BARS);
+let value=envelope*impact;
 
-let value = dataArray[index];
-
-/* remove baseline noise */
-value = Math.max(0, value - 40);
-
-/* compress bass so it doesn't dominate */
-value = Math.pow(value/255,1.5) * 255;
-
-/* volume drives jump */
-value *= 1 + pulse*2;
+/* small variation across bars */
+value*=
+0.85+
+Math.sin(i*0.4)*0.15;
 
 /* smoothing */
-smooth[i] =
-Math.max(value,smooth[i]*0.82);
+smoothed[i]=
+Math.max(
+value,
+smoothed[i]*0.82
+);
 
-let height = smooth[i]*0.7;
+let height=
+Math.max(
+0,
+smoothed[i]-8
+)*1.6;
 
-/* extra volume lift */
-height += volume*0.3*pulse;
-
-let x=i*barWidth;
-
-let hue =
-(i/BARS)*360 +
-performance.now()*0.04;
+/* rainbow */
+let hue=
+(i/BARS)*360+
+performance.now()*0.06;
 
 ctx.fillStyle=
-`hsl(${hue%360},100%,55%)`;
+`hsl(${hue%360},100%,60%)`;
 
 ctx.fillRect(
 
-x,
+i*barWidth,
 
 canvas.height-height,
 
@@ -127,6 +165,23 @@ barWidth-3,
 
 height
 
+);
+
+}
+
+/* screen pulse on kick */
+if(kickEnergy>0.05){
+
+ctx.fillStyle=
+`rgba(255,255,255,${
+kickEnergy*0.12
+})`;
+
+ctx.fillRect(
+0,
+0,
+canvas.width,
+canvas.height
 );
 
 }
