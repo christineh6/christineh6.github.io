@@ -8,7 +8,7 @@ let source;
 
 let freqData;
 
-const BARS = 64;
+const BARS = 96;
 
 let smooth = new Array(BARS).fill(0);
 
@@ -25,8 +25,9 @@ audioCtx.createMediaElementSource(audio);
 analyser=
 audioCtx.createAnalyser();
 
+/* less smoothing from analyser */
 analyser.fftSize=2048;
-analyser.smoothingTimeConstant=.75;
+analyser.smoothingTimeConstant=.35;
 
 source.connect(analyser);
 analyser.connect(audioCtx.destination);
@@ -36,6 +37,7 @@ new Uint8Array(analyser.frequencyBinCount);
 
 }
 
+/* drum detection */
 function detectKick(){
 
 let bass=0;
@@ -49,7 +51,7 @@ bass+=freqData[i];
 bass/=16;
 
 /* remove constant bass */
-bass=Math.max(0,bass-50);
+bass=Math.max(0,bass-45);
 
 bassHistory.push(bass);
 
@@ -63,53 +65,32 @@ let avg=
 bassHistory.reduce((a,b)=>a+b,0)
 /bassHistory.length;
 
-/* kick trigger */
-if(bass>avg*1.35 && bass>45){
+if(bass>avg*1.35 && bass>40){
 
 kick=1;
 
 }
 
-/* smooth decay */
-kick*=0.90;
+kick*=0.88;
 
 }
 
+/* narrow band sampling (fixes hills) */
 function getBand(i){
 
-/* logarithmic bands */
-let start=
+let index=
 Math.floor(
-Math.pow(i/BARS,1.7)
+Math.pow(i/BARS,1.4)
 *freqData.length
 );
 
-let end=
-Math.floor(
-Math.pow((i+1)/BARS,1.7)
-*freqData.length
-);
-
-let sum=0;
-let count=0;
-
-for(let j=start;j<end;j++){
-
-sum+=freqData[j];
-count++;
-
-}
-
-let value=sum/count;
+let value=freqData[index];
 
 /* remove noise floor */
-value=Math.max(0,value-25);
+value=Math.max(0,value-18);
 
-/* normalize */
-value=value*1.3;
-
-/* compression */
-value=Math.pow(value/255,1.2)*255;
+/* slight compression */
+value=Math.pow(value/255,1.1)*255;
 
 return value;
 
@@ -133,29 +114,30 @@ for(let i=0;i<BARS;i++){
 
 let value=getBand(i);
 
-/* DRUM BLEND (not override) */
+/* drum boost but not overpower */
 let drumBoost=
-1+(kick*.9*Math.max(0,1-i/20));
+1+(kick*.6*Math.max(0,1-i/24));
 
-value=value*drumBoost;
+value*=drumBoost;
 
-/* smoothing physics */
+/* small natural variation */
+value*=1+(Math.random()*0.06);
+
+/* fast attack / fast decay */
 if(value>smooth[i]){
 
-smooth[i]+=
-(value-smooth[i])*0.55;
+smooth[i]+=(value-smooth[i])*0.85;
 
 }else{
 
-smooth[i]+=
-(value-smooth[i])*0.08;
+smooth[i]*=0.65;
 
 }
 
-/* baseline removal */
+/* remove baseline */
 let height=
-Math.max(0,smooth[i]-4)
-*1.6;
+Math.max(0,smooth[i]-3)
+*1.7;
 
 /* rainbow */
 let hue=
@@ -171,7 +153,7 @@ i*barWidth,
 
 canvas.height-height,
 
-barWidth-2,
+barWidth-1,
 
 height
 
@@ -179,12 +161,12 @@ height
 
 }
 
-/* subtle kick pulse */
-if(kick>0.1){
+/* subtle kick flash */
+if(kick>0.15){
 
 ctx.fillStyle=
 `rgba(255,255,255,${
-kick*.05
+kick*.04
 })`;
 
 ctx.fillRect(
