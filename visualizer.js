@@ -8,24 +8,36 @@ let source;
 
 let freqData;
 
-const BARS = 96;
+const BANDS = [
+{freq:32,gain:0},
+{freq:64,gain:0},
+{freq:125,gain:1},
+{freq:250,gain:1},
+{freq:500,gain:0},
+{freq:1000,gain:2},
+{freq:2000,gain:0},
+{freq:4000,gain:4},
+{freq:8000,gain:3},
+{freq:16000,gain:3}
+];
 
-let bars = new Array(BARS).fill(0);
-let bandMemory = new Array(BARS).fill(1);
+let bars = new Array(BANDS.length).fill(0);
 
-let bassHistory=[];
 let kick=0;
+let bassHistory=[];
 
 function setup(){
 
 audioCtx=new AudioContext();
 
-source=audioCtx.createMediaElementSource(audio);
+source=
+audioCtx.createMediaElementSource(audio);
 
-analyser=audioCtx.createAnalyser();
+analyser=
+audioCtx.createAnalyser();
 
 analyser.fftSize=2048;
-analyser.smoothingTimeConstant=.4;
+analyser.smoothingTimeConstant=.55;
 
 source.connect(analyser);
 analyser.connect(audioCtx.destination);
@@ -35,23 +47,39 @@ new Uint8Array(analyser.frequencyBinCount);
 
 }
 
-function detectKick(){
+/* convert freq to fft index */
+function freqToIndex(freq){
 
-let bass=0;
+let nyquist=
+audioCtx.sampleRate/2;
 
-for(let i=2;i<18;i++){
-
-bass+=freqData[i];
+return Math.round(
+(freq/nyquist)*freqData.length
+);
 
 }
 
-bass/=16;
+function getBand(freq){
 
-bass=Math.max(0,bass-35);
+let index=freqToIndex(freq);
+
+let value=freqData[index]||0;
+
+value=Math.max(0,value-20);
+
+return value;
+
+}
+
+/* kick detection */
+function detectKick(){
+
+let bass=
+(getBand(32)+getBand(64))/2;
 
 bassHistory.push(bass);
 
-if(bassHistory.length>40){
+if(bassHistory.length>30){
 
 bassHistory.shift();
 
@@ -61,42 +89,13 @@ let avg=
 bassHistory.reduce((a,b)=>a+b,0)
 /bassHistory.length;
 
-if(bass>avg*1.35 && bass>40){
+if(bass>avg*1.3 && bass>45){
 
 kick=1;
 
 }
 
-kick*=0.92;
-
-}
-
-function getBand(i){
-
-let index=
-Math.floor(
-Math.pow(i/BARS,1.4)
-*freqData.length
-);
-
-let value=freqData[index];
-
-value=Math.max(0,value-18);
-
-/* adaptive normalization */
-bandMemory[i]=
-bandMemory[i]*0.997+
-value*0.003;
-
-value=value/(bandMemory[i]+1);
-
-/* scale */
-value*=180;
-
-/* soft compression */
-value=Math.pow(value/255,1.2)*255;
-
-return value;
+kick*=0.9;
 
 }
 
@@ -108,42 +107,46 @@ analyser.getByteFrequencyData(freqData);
 
 detectKick();
 
-ctx.fillStyle="#040408";
+ctx.fillStyle="#050510";
 
 ctx.fillRect(0,0,canvas.width,canvas.height);
 
-let barWidth=canvas.width/BARS;
+let barWidth=
+canvas.width/BANDS.length;
 
-for(let i=0;i<BARS;i++){
+for(let i=0;i<BANDS.length;i++){
 
-let value=getBand(i);
+let band=BANDS[i];
 
-/* drum influence */
-value*=1+(kick*.4*Math.max(0,1-i/25));
+let value=
+getBand(band.freq);
 
-/* ATTACK / RELEASE PHYSICS */
-let attack=.6;
-let release=.18;
+/* apply your EQ gain */
+value*=1+(band.gain*.12);
 
+/* drum boost */
+value*=1+(kick*.8);
+
+/* attack/release */
 if(value>bars[i]){
 
-bars[i]+=(value-bars[i])*attack;
+bars[i]+=
+(value-bars[i])*.7;
 
 }else{
 
-bars[i]+=(value-bars[i])*release;
+bars[i]*=.75;
 
 }
 
-/* deadzone */
 let height=
-Math.max(0,bars[i]-3)
-*1.6;
+Math.max(0,bars[i]-5)
+*2;
 
 /* rainbow */
 let hue=
-(i/BARS)*360+
-performance.now()*0.03;
+(i/BANDS.length)*360+
+performance.now()*0.04;
 
 ctx.fillStyle=
 `hsl(${hue%360},100%,60%)`;
@@ -154,7 +157,7 @@ i*barWidth,
 
 canvas.height-height,
 
-barWidth-1,
+barWidth-8,
 
 height
 
@@ -162,25 +165,7 @@ height
 
 }
 
-/* kick flash */
-if(kick>0.1){
-
-ctx.fillStyle=
-`rgba(255,255,255,${
-kick*.04
-})`;
-
-ctx.fillRect(
-0,
-0,
-canvas.width,
-canvas.height
-);
-
 }
-
-}
-
 audio.onplay=()=>{
 
 if(!audioCtx){
