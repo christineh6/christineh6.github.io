@@ -6,14 +6,13 @@ let audioCtx;
 let analyser;
 let source;
 
-let dataArray;
+let freqData;
 
-const BARS = 48;
+const BARS = 64;
 
 let smooth = new Array(BARS).fill(0);
 
 let bassHistory=[];
-
 let kick=0;
 
 function setup(){
@@ -27,37 +26,34 @@ analyser=
 audioCtx.createAnalyser();
 
 analyser.fftSize=2048;
+analyser.smoothingTimeConstant=.75;
 
 source.connect(analyser);
-
 analyser.connect(audioCtx.destination);
 
-dataArray=
-new Uint8Array(
-analyser.frequencyBinCount
-);
+freqData=
+new Uint8Array(analyser.frequencyBinCount);
 
 }
 
-/* kick detection */
 function detectKick(){
 
 let bass=0;
 
-for(let i=2;i<22;i++){
+for(let i=2;i<18;i++){
 
-bass+=dataArray[i];
+bass+=freqData[i];
 
 }
 
-bass/=20;
+bass/=16;
 
-/* remove baseline */
-bass=Math.max(0,bass-45);
+/* remove constant bass */
+bass=Math.max(0,bass-50);
 
 bassHistory.push(bass);
 
-if(bassHistory.length>40){
+if(bassHistory.length>45){
 
 bassHistory.shift();
 
@@ -67,29 +63,31 @@ let avg=
 bassHistory.reduce((a,b)=>a+b,0)
 /bassHistory.length;
 
-if(bass>avg*1.5 && bass>55){
+/* kick trigger */
+if(bass>avg*1.35 && bass>45){
 
 kick=1;
 
 }
 
-kick*=0.88;
+/* smooth decay */
+kick*=0.90;
 
 }
 
-/* frequency band */
 function getBand(i){
 
+/* logarithmic bands */
 let start=
 Math.floor(
-Math.pow(i/BARS,2)
-*dataArray.length
+Math.pow(i/BARS,1.7)
+*freqData.length
 );
 
 let end=
 Math.floor(
-Math.pow((i+1)/BARS,2)
-*dataArray.length
+Math.pow((i+1)/BARS,1.7)
+*freqData.length
 );
 
 let sum=0;
@@ -97,19 +95,21 @@ let count=0;
 
 for(let j=start;j<end;j++){
 
-sum+=dataArray[j];
-
+sum+=freqData[j];
 count++;
 
 }
 
 let value=sum/count;
 
-/* remove constant noise */
-value=Math.max(0,value-30);
+/* remove noise floor */
+value=Math.max(0,value-25);
 
-/* compress */
-value=Math.pow(value/255,1.4)*255;
+/* normalize */
+value=value*1.3;
+
+/* compression */
+value=Math.pow(value/255,1.2)*255;
 
 return value;
 
@@ -119,51 +119,51 @@ function draw(){
 
 requestAnimationFrame(draw);
 
-analyser.getByteFrequencyData(dataArray);
+analyser.getByteFrequencyData(freqData);
 
 detectKick();
 
-ctx.fillStyle="#050510";
+ctx.fillStyle="#040408";
 
-ctx.fillRect(
-0,
-0,
-canvas.width,
-canvas.height
-);
+ctx.fillRect(0,0,canvas.width,canvas.height);
 
-let barWidth=
-canvas.width/BARS;
+let barWidth=canvas.width/BARS;
 
 for(let i=0;i<BARS;i++){
 
 let value=getBand(i);
 
-/* drum impact */
+/* DRUM BLEND (not override) */
 let drumBoost=
-1+kick*2.2*
-Math.max(0,1-i/18);
+1+(kick*.9*Math.max(0,1-i/20));
 
-value*=drumBoost;
+value=value*drumBoost;
 
-/* smoothing */
-smooth[i]=
-Math.max(
-value,
-smooth[i]*0.82
-);
+/* smoothing physics */
+if(value>smooth[i]){
 
+smooth[i]+=
+(value-smooth[i])*0.55;
+
+}else{
+
+smooth[i]+=
+(value-smooth[i])*0.08;
+
+}
+
+/* baseline removal */
 let height=
-Math.max(0,smooth[i]-5)
-*1.5;
+Math.max(0,smooth[i]-4)
+*1.6;
 
 /* rainbow */
 let hue=
 (i/BARS)*360+
-performance.now()*0.05;
+performance.now()*0.04;
 
 ctx.fillStyle=
-`hsl(${hue%360},100%,58%)`;
+`hsl(${hue%360},100%,60%)`;
 
 ctx.fillRect(
 
@@ -171,7 +171,7 @@ i*barWidth,
 
 canvas.height-height,
 
-barWidth-3,
+barWidth-2,
 
 height
 
@@ -179,12 +179,12 @@ height
 
 }
 
-/* kick flash */
-if(kick>0.05){
+/* subtle kick pulse */
+if(kick>0.1){
 
 ctx.fillStyle=
 `rgba(255,255,255,${
-kick*0.08
+kick*.05
 })`;
 
 ctx.fillRect(
