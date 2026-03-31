@@ -10,9 +10,7 @@ let freqData;
 
 const BARS = 96;
 
-let smooth = new Array(BARS).fill(0);
-
-/* NEW: band normalization */
+let bars = new Array(BARS).fill(0);
 let bandMemory = new Array(BARS).fill(1);
 
 let bassHistory=[];
@@ -22,14 +20,12 @@ function setup(){
 
 audioCtx=new AudioContext();
 
-source=
-audioCtx.createMediaElementSource(audio);
+source=audioCtx.createMediaElementSource(audio);
 
-analyser=
-audioCtx.createAnalyser();
+analyser=audioCtx.createAnalyser();
 
 analyser.fftSize=2048;
-analyser.smoothingTimeConstant=.25;
+analyser.smoothingTimeConstant=.4;
 
 source.connect(analyser);
 analyser.connect(audioCtx.destination);
@@ -51,7 +47,7 @@ bass+=freqData[i];
 
 bass/=16;
 
-bass=Math.max(0,bass-40);
+bass=Math.max(0,bass-35);
 
 bassHistory.push(bass);
 
@@ -65,13 +61,13 @@ let avg=
 bassHistory.reduce((a,b)=>a+b,0)
 /bassHistory.length;
 
-if(bass>avg*1.3 && bass>35){
+if(bass>avg*1.35 && bass>40){
 
 kick=1;
 
 }
 
-kick*=0.90;
+kick*=0.92;
 
 }
 
@@ -79,28 +75,26 @@ function getBand(i){
 
 let index=
 Math.floor(
-Math.pow(i/BARS,1.3)
+Math.pow(i/BARS,1.4)
 *freqData.length
 );
 
 let value=freqData[index];
 
-/* remove noise */
-value=Math.max(0,value-15);
+value=Math.max(0,value-18);
 
-/* NEW: adaptive normalization */
+/* adaptive normalization */
 bandMemory[i]=
-bandMemory[i]*0.995+
-value*0.005;
+bandMemory[i]*0.997+
+value*0.003;
 
-/* divide by learned average */
 value=value/(bandMemory[i]+1);
 
-/* boost dynamics */
-value*=140;
+/* scale */
+value*=180;
 
-/* compression */
-value=Math.pow(value/255,1.15)*255;
+/* soft compression */
+value=Math.pow(value/255,1.2)*255;
 
 return value;
 
@@ -125,27 +119,31 @@ for(let i=0;i<BARS;i++){
 let value=getBand(i);
 
 /* drum influence */
-value*=1+(kick*.5*Math.max(0,1-i/28));
+value*=1+(kick*.4*Math.max(0,1-i/25));
 
-/* fast physics */
-if(value>smooth[i]){
+/* ATTACK / RELEASE PHYSICS */
+let attack=.6;
+let release=.18;
 
-smooth[i]+=(value-smooth[i])*0.9;
+if(value>bars[i]){
+
+bars[i]+=(value-bars[i])*attack;
 
 }else{
 
-smooth[i]*=0.6;
+bars[i]+=(value-bars[i])*release;
 
 }
 
+/* deadzone */
 let height=
-Math.max(0,smooth[i]-2)
-*1.8;
+Math.max(0,bars[i]-3)
+*1.6;
 
 /* rainbow */
 let hue=
 (i/BARS)*360+
-performance.now()*0.035;
+performance.now()*0.03;
 
 ctx.fillStyle=
 `hsl(${hue%360},100%,60%)`;
@@ -169,7 +167,7 @@ if(kick>0.1){
 
 ctx.fillStyle=
 `rgba(255,255,255,${
-kick*.05
+kick*.04
 })`;
 
 ctx.fillRect(
