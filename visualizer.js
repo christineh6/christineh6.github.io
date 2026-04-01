@@ -1,4 +1,4 @@
-const audio = document.getElementById("audio");
+const audio = document.getElementById("video");
 const canvas = document.getElementById("visualizer");
 const ctx = canvas.getContext("2d");
 
