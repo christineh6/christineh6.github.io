@@ -30,17 +30,21 @@ h1{
   text-align:left;
 }
 .hobbies{
-  display:grid;
-  grid-template-columns:120px 1fr;
-  max-width:600px;
-  margin:20px auto;
-  gap:8px 8px;
-  align-items:center;
+display:grid;
+grid-template-columns:110px 1fr;
+max-width:600px;
+margin:20px auto;
+gap:8px 10px;
+align-items:start;
 }
 
 .label{
-  font-weight:600;
-  text-align:right;
+font-weight:600;
+text-align:right;
+}
+
+.hobbies div:nth-child(2n){
+text-align:left;
 }
 
 .email{
