@@ -31,11 +31,11 @@ h1{
 }
 .hobbies{
 display:grid;
-grid-template-columns:110px 1fr;
+grid-template-columns:105px 1fr;
 max-width:600px;
 margin:20px auto;
-gap:8px 12px;
-text-align:left;   /* ← THIS is the missing fix */
+gap:6px 10px;
+align-items:start;
 }
 
 .label{
@@ -43,9 +43,6 @@ font-weight:600;
 text-align:right;
 }
 
-.hobbies div:nth-child(2n){
-text-align:left;
-}
 
 .email{
     text-align:left;
