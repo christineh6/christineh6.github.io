@@ -31,11 +31,11 @@ h1{
 }
 .hobbies{
 display:grid;
-grid-template-columns:105px 1fr;
+grid-template-columns:110px 1fr;
 max-width:600px;
 margin:20px auto;
-gap:6px 10px;
-align-items:start;
+gap:8px 12px;
+text-align:left;
 }
 
 .label{
