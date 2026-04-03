@@ -35,7 +35,6 @@ grid-template-columns:110px 1fr;
 max-width:600px;
 margin:20px auto;
 gap:8px 12px;
-align-items:start;
 text-align:left;   /* ← THIS is the missing fix */
 }
 
