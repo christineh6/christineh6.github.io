@@ -29,23 +29,18 @@ h1{
 .hobbies-title{
   text-align:left;
 }
-.hobbies div{
-text-align:left;
-}
 .hobbies{
-display:grid;
-grid-template-columns:110px 1fr;
 max-width:600px;
-margin:20px auto;
-gap:8px 12px;
+margin:15px auto;
 text-align:left;
+line-height:1.7;
 }
 
-.label{
-font-weight:600;
-text-align:right;
+.hobbies-title{
+text-align:left;
+max-width:600px;
+margin:25px auto 0;
 }
-
 
 .email{
     text-align:left;
