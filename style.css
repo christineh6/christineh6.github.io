@@ -30,7 +30,7 @@ h1{
 .hobbies{
   max-width:700px;
   margin:20px auto;
-  text-align:center;
+  text-align:left;
   line-height:1.6;
 }
 
@@ -41,6 +41,7 @@ h1{
 }
 
 .email{
+    text-align:left;
     margin-top:20px;
     font-weight:600;
     color:#2563eb;
