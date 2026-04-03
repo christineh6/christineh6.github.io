@@ -29,6 +29,9 @@ h1{
 .hobbies-title{
   text-align:left;
 }
+.hobbies div{
+text-align:left;
+}
 .hobbies{
 display:grid;
 grid-template-columns:110px 1fr;
