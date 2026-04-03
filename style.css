@@ -43,10 +43,11 @@ margin:25px auto 0;
 }
 
 .email{
-    text-align:left;
-    margin-top:20px;
-    font-weight:600;
-    color:#2563eb;
+max-width:600px;
+margin:15px auto 0;
+text-align:left;
+font-weight:600;
+color:#2563eb;
 }
 
 .button{
